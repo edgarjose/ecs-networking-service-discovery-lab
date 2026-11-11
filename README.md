@@ -4,6 +4,8 @@ A hands-on AWS Fargate lab exploring how two microservices communicate through p
 
 Companion article: [Inside ECS Networking: What Service Discovery and DNS Reveal About Microservices Communication](https://www.edgarcloudnotes.com/inside-ecs-networking-what-service-discovery-and-dns-reveal-about-microservices-communication/)
 
+Companion series: **Cloud in Practice**, on [Practical Cloud Lab](https://www.youtube.com/channel/UCpmDKumnarynaM7OF9NYV3A). This repository supports the first episode. The channel link is not a direct link to a published episode.
+
 ## What this lab covers
 
 - ECS Fargate tasks using the `awsvpc` network mode and private IP addresses
@@ -22,6 +24,15 @@ Two containerized Python/Flask services run as independent ECS services in priva
 
 Typical flow: Client or test process → Orders → DNS lookup for `payments.lab.internal` → direct HTTP connection to a Payments task. **Cloud Map resolves names; it is not an HTTP proxy.**
 
+```mermaid
+flowchart LR
+  Orders -->|DNS query| Resolver[VPC DNS resolver]
+  Resolver --> Zone[Route 53 private zone]
+  ECS[ECS service] -. task registration .-> CloudMap[AWS Cloud Map]
+  CloudMap -. manages records .-> Zone
+  Orders -->|HTTP / TCP 5000| Payments[Payments task]
+```
+
 ## Repository layout
 
 | Directory | Purpose |
@@ -35,6 +46,16 @@ Typical flow: Client or test process → Orders → DNS lookup for `payments.lab
 
 ## Quick local smoke test
 
+Use a virtual environment so the lab does not modify your system Python:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r apps/orders/requirements.txt -r apps/payments/requirements.txt
+```
+
+In PowerShell, activate with `.venv\\Scripts\\Activate.ps1`. Activate the same environment in both application terminals.
+
 Run each service from its own directory in two terminals using Python 3.12+:
 
 1. `cd apps/payments && python -m pip install -r requirements.txt && python app.py`
@@ -42,6 +63,8 @@ Run each service from its own directory in two terminals using Python 3.12+:
 3. Call `curl http://127.0.0.1:4000/checkout` and check for a completed order with a Payments response.
 
 On Windows PowerShell, set `$env:PAYMENTS_URL = 'http://127.0.0.1:5000'` before running Orders. Local execution does **not** test Cloud Map; for that, deploy to AWS.
+
+For the local application contract tests, run `python -m unittest discover -s tests -v` from the repository root. These tests mock the downstream HTTP call; they do not create AWS resources or validate DNS propagation.
 
 ## Reproduce the AWS experiments
 
