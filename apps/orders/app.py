@@ -21,7 +21,7 @@ def health():
 def checkout():
     try:
         response = requests.get(
-            f"{PAYMENTS_URL}/payment",
+            f"{PAYMENTS_URL.rstrip('/')}/payment",
             timeout=5
         )
         response.raise_for_status()
